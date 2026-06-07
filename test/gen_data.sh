@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/sh
 
 # SipHash - Streaming-capable SipHash-2-4 and SipHash-1-3 for Lean
 # Copyright 2026 Soumendra Ganguly
@@ -14,6 +14,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 . "${SCRIPT_DIR}/common.sh"
