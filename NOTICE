@@ -1,0 +1,15 @@
+SipHash - Streaming-capable SipHash-2-4 and SipHash-1-3 for Lean
+Copyright 2026 Soumendra Ganguly
+
+Part of this project is a Lean 4 translation of part of the c-siphash project:
+    https://github.com/c-util/c-siphash
+
+Portions Copyright (C) 2015-2022 Red Hat, Inc.
+Authors of c-siphash:
+    Daniele Nicolodi <daniele@grinta.net>
+    David Rheinsberg <david.rheinsberg@gmail.com>
+    Tom Gundersen <teg@jklm.no>
+
+The c-siphash project is based on the public-domain SipHash reference
+implementation by Jean-Philippe Aumasson and Daniel J. Bernstein:
+    https://github.com/veorq/SipHash

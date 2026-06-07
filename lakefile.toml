@@ -1,0 +1,4 @@
+name = "SipHash"
+
+[[lean_lib]]
+name = "SipHash"
