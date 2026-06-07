@@ -2,11 +2,15 @@
 
 A small, dependency-free, streaming-capable SipHash-2-4 and SipHash-1-3 implementation in Lean 4.
 
-The library is self-contained in a single file `SipHash.lean`, so you can `require` it or simply copy the file into your project.
+The library is self-contained in a single file `SipHash.lean`, so you can simply copy the file into your project while keeping its attribution header. If you prefer a build-system workflow, the essential `lake` files are included too.
+
+The tests need no toolchain or IDE setup either: with the included test data, they run on any system with a POSIX shell and `lean` on `PATH`. Regenerating that data from the reference C implementation also needs `gcc` and `git`.
+
+The file `SipHash.lean` is a Lean 4 translation of part of the streaming-capable C implementation [c-siphash](https://github.com/c-util/c-siphash), which is based on the reference implementation [SipHash](https://github.com/veorq/SipHash).
 
 ## Motivation
 
-I originally wrote this as part of a formally verified Rust hash table project. The verification runs on Lean 4 code that [Aeneas](https://github.com/AeneasVerif/aeneas) generates from the Rust.
+I originally wrote this as part of a formally verified Rust hash table project, where the verification runs on Lean 4 code that [Aeneas](https://github.com/AeneasVerif/aeneas) generates from the Rust. I later extracted it into this standalone library for reuse.
 
 In the original Rust code, keys are hashed using `DefaultHasher`. Writing this library doubled as a fun exercise and as a faithful stand-in for `DefaultHasher`, which is SipHash-1-3 with an all-zero seed.
 
