@@ -16,13 +16,13 @@ The following are under the `SipHash` namespace:
 
 ### One-shot
 
-- `sipHash24` / `sipHash13 (seed : Vector UInt8 16) (bytes : Array UInt8) : UInt64`
+- `sipHash24, sipHash13` `(seed : Vector UInt8 16) (bytes : Array UInt8) : UInt64`
 
 ### Streaming
 
-- `new (seed : Vector UInt8 16) : DefaultHasher`
-- `write24` / `write13 (state : DefaultHasher) (bytes : Array UInt8) : DefaultHasher`
-- `finish24` / `finish13 (state : DefaultHasher) : UInt64`
+- `new` `(seed : Vector UInt8 16) : DefaultHasher`
+- `write24, write13` `(state : DefaultHasher) (bytes : Array UInt8) : DefaultHasher`
+- `finish24, finish13` `(state : DefaultHasher) : UInt64`
 
 ## Usage
 
