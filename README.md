@@ -10,9 +10,9 @@ The file `SipHash.lean` is a Lean 4 translation of part of the streaming-capable
 
 ## Motivation
 
-I originally wrote this as part of a formally verified Rust hash table project, where the verification runs on Lean 4 code that [Aeneas](https://github.com/AeneasVerif/aeneas) generates from the Rust. I later extracted it into this standalone library for reuse.
+I originally wrote this as part of a formally verified Rust hash table project, where the verification runs on a faithful translation of the Rust code to Lean 4. I later extracted it into this standalone library for reusability.
 
-In the original Rust code, keys are hashed using `DefaultHasher`. Writing this library doubled as a fun exercise and as a faithful stand-in for `DefaultHasher`, which is SipHash-1-3 with an all-zero seed.
+In the original Rust code, keys are hashed using `std::collections::hash_map::DefaultHasher`. Writing this library doubled as a fun exercise and as a faithful stand-in for `DefaultHasher`, which is SipHash-1-3 with an all-zero seed.
 
 ## API
 
@@ -41,9 +41,8 @@ def seed : Vector UInt8 16 :=
 #eval SipHash.sipHash13 seed #[1, 2, 3, 4, 5]
 
 -- Streaming SipHash-2-4: feed bytes in any number of chunks, then finish.
---
--- Replace `write24` with `write13` and `finish24` with `finish13`
--- for SipHash-1-3:
+-- For SipHash-1-3 instead, replace `write24` with `write13` and `finish24`
+-- with `finish13`.
 #eval
   let h := SipHash.new seed
   let h := SipHash.write24 h #[1, 2, 3]
