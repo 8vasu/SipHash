@@ -45,15 +45,15 @@ def readLE64 (data : Array UInt8) (offset : Nat) : UInt64 :=
   (data[offset + 7]!.toUInt64 <<< (56 : UInt64))
 
 /--
-SipHash state for an in-flight hash. Initialize it from a seed with `new`,
-append data with `write24`/`write13`, then read out the hash with
-`finish24`/`finish13`.
+SipHash state for an in-flight hash. Initialize it from a seed with `init`,
+append data with `append24`/`append13`, then read out the hash with
+`finalize24`/`finalize13`.
 
 `v0`, `v1`, `v2`, `v3` are the internal state; `padding` holds pending bytes
 that did not fill a multiple of 8; `nBytes` is the number of bytes hashed so
 far.
 -/
-structure DefaultHasher where
+structure LeanSipHash where
   v0 : UInt64
   v1 : UInt64
   v2 : UInt64
@@ -63,13 +63,13 @@ structure DefaultHasher where
 
 /--
 Initializes the SipHash state from a 128-bit `seed`. Once initialized, the
-state can hash arbitrary input: feed data with `write24`/`write13`, then get
-the final hash with `finish24`/`finish13`.
+state can hash arbitrary input: feed data with `append24`/`append13`, then get
+the final hash with `finalize24`/`finalize13`.
 
 The hashes depend on the seed. Every user is highly encouraged to provide
 their own unique seed. If no stable hashes are needed, a random seed will do.
 -/
-def new (seed : Vector UInt8 16) : DefaultHasher :=
+def init (seed : Vector UInt8 16) : LeanSipHash :=
   let k0 : UInt64 := readLE64 seed.toArray 0
   let k1 : UInt64 := readLE64 seed.toArray 8
 
@@ -90,7 +90,7 @@ def rotateLeft (x : UInt64) (b : Nat) : UInt64 :=
 
 /-- One SipHash round: mixes the four state words `v0`, `v1`, `v2`, `v3`
     using additions, rotations, and xors. -/
-def sipRound (state : DefaultHasher) : DefaultHasher :=
+def sipRound (state : LeanSipHash) : LeanSipHash :=
   let v0 : UInt64 := state.v0
   let v1 : UInt64 := state.v1
   let v2 : UInt64 := state.v2
@@ -114,7 +114,7 @@ def sipRound (state : DefaultHasher) : DefaultHasher :=
   { state with v0, v1, v2, v3 }
 
 /-- Applies `sipRound` to the state `n` times. -/
-def sipRoundN (state : DefaultHasher) (n : Nat) : DefaultHasher :=
+def sipRoundN (state : LeanSipHash) (n : Nat) : LeanSipHash :=
   -- (List.range n).foldl (fun s _ => sipRound s) state
   match n with
   | 0 => state
@@ -141,28 +141,28 @@ decreasing_by omega
 Once at a 64-bit boundary, we can operate on the input in 64-bit chunks from
 `i` up to `boundary`. This is much faster than processing one byte at a time.
 -/
-def compressChunks (state : DefaultHasher) (bytes : Array UInt8)
-    (i : Nat) (boundary : Nat) (n : Nat) : DefaultHasher :=
+def compressChunks (state : LeanSipHash) (bytes : Array UInt8)
+    (i : Nat) (boundary : Nat) (n : Nat) : LeanSipHash :=
   if i < boundary then
     let m : UInt64 := readLE64 bytes i
 
-    let state : DefaultHasher := { state with v3 := state.v3 ^^^ m }
+    let state : LeanSipHash := { state with v3 := state.v3 ^^^ m }
 
-    let state : DefaultHasher := sipRoundN state n
+    let state : LeanSipHash := sipRoundN state n
 
-    let state : DefaultHasher := { state with v0 := state.v0 ^^^ m }
+    let state : LeanSipHash := { state with v0 := state.v0 ^^^ m }
 
     compressChunks state bytes (i + 8) boundary n
   else
     state
 termination_by boundary - i
 
-def appendAligned (state : DefaultHasher) (bytes : Array UInt8)
-    (i : Nat) (n : Nat) : DefaultHasher :=
+def appendAligned (state : LeanSipHash) (bytes : Array UInt8)
+    (i : Nat) (n : Nat) : LeanSipHash :=
   -- We want to % (mod) state.nBytes by sizeof(UInt64), which is 8.
   -- But `&&& 7` is same as `% 8` in output but faster.
   let boundary : Nat := bytes.size - (state.nBytes &&& 7)
-  let state : DefaultHasher := compressChunks state bytes i boundary n
+  let state : LeanSipHash := compressChunks state bytes i boundary n
 
   -- Now that we have hashed as many 64-bit chunks as possible, remember the
   -- remaining trailing bytes in `padding`, so the next append (or the
@@ -172,27 +172,27 @@ def appendAligned (state : DefaultHasher) (bytes : Array UInt8)
 
   { state with padding := padding }
 
-def compressWord (state : DefaultHasher) (padding : UInt64)
-    (n : Nat) : DefaultHasher :=
-  let state : DefaultHasher := { state with v3 := state.v3 ^^^ padding }
+def compressWord (state : LeanSipHash) (padding : UInt64)
+    (n : Nat) : LeanSipHash :=
+  let state : LeanSipHash := { state with v3 := state.v3 ^^^ padding }
 
-  let state : DefaultHasher := sipRoundN state n
+  let state : LeanSipHash := sipRoundN state n
 
   { state with v0 := state.v0 ^^^ padding, padding := 0 }
 
-def appendN (state : DefaultHasher) (bytes : Array UInt8)
-    (n : Nat) : DefaultHasher :=
+def appendN (state : LeanSipHash) (bytes : Array UInt8)
+    (n : Nat) : LeanSipHash :=
   let left : Nat := state.nBytes &&& 7
-  let state : DefaultHasher :=
+  let state : LeanSipHash :=
     { state with nBytes := state.nBytes + bytes.size }
 
   -- SipHash operates on 64-bit chunks. If the previous append was not a
   -- multiple of 64 bits, we must first operate on single bytes.
-  let (state, i): DefaultHasher × Nat := if left > 0 then
+  let (state, i): LeanSipHash × Nat := if left > 0 then
     let (padding, i, left): UInt64 × Nat × Nat :=
       getPadding (state.padding, 0, left) bytes
 
-    let state : DefaultHasher := { state with padding := padding }
+    let state : LeanSipHash := { state with padding := padding }
 
     if i == bytes.size && left < 8 then
       (state, bytes.size)
@@ -207,41 +207,41 @@ def appendN (state : DefaultHasher) (bytes : Array UInt8)
 Feeds `bytes` into the SipHash state machine using the SipHash-2-4 variant.
 This is streaming-capable: the resulting hash is the same regardless of how you
 chunk the input. It does not produce a final hash; call it many times to append
-more data, then call `finish24` to retrieve the hash.
+more data, then call `finalize24` to retrieve the hash.
 -/
-def write24 (state : DefaultHasher) (bytes : Array UInt8) : DefaultHasher :=
+def append24 (state : LeanSipHash) (bytes : Array UInt8) : LeanSipHash :=
   appendN state bytes 2
 
-/-- Like `write24`, but the SipHash-1-3 variant; finalize with `finish13`. -/
-def write13 (state : DefaultHasher) (bytes : Array UInt8) : DefaultHasher :=
+/-- Like `append24`, but the SipHash-1-3 variant; finalize with `finalize13`. -/
+def append13 (state : LeanSipHash) (bytes : Array UInt8) : LeanSipHash :=
   appendN state bytes 1
 
-def finalizeNM (state : DefaultHasher) (n : Nat) (m : Nat) : UInt64 :=
+def finalizeNM (state : LeanSipHash) (n : Nat) (m : Nat) : UInt64 :=
   let b : UInt64 := state.padding ||| (state.nBytes.toUInt64 <<< (56 : UInt64))
 
-  let state : DefaultHasher := { state with v3 := state.v3 ^^^ b }
+  let state : LeanSipHash := { state with v3 := state.v3 ^^^ b }
 
-  let state : DefaultHasher := sipRoundN state n
+  let state : LeanSipHash := sipRoundN state n
 
-  let state : DefaultHasher := {
+  let state : LeanSipHash := {
     state with
       v0 := state.v0 ^^^ b
       v2 := state.v2 ^^^ (0xff : UInt64)
   }
 
-  let state : DefaultHasher := sipRoundN state m
+  let state : LeanSipHash := sipRoundN state m
 
   state.v0 ^^^ state.v1 ^^^ state.v2 ^^^ state.v3
 
 /--
 Produces the final SipHash-2-4 hash for the given state: the hash of the
-concatenated bytes fed in via `write24`. Returns a 64-bit hash value.
+concatenated bytes fed in via `append24`. Returns a 64-bit hash value.
 -/
-def finish24 (state : DefaultHasher) : UInt64 :=
+def finalize24 (state : LeanSipHash) : UInt64 :=
   finalizeNM state 2 4
 
-/-- Like `finish24`, but produces the final SipHash-1-3 hash. -/
-def finish13 (state : DefaultHasher) : UInt64 :=
+/-- Like `finalize24`, but produces the final SipHash-1-3 hash. -/
+def finalize13 (state : LeanSipHash) : UInt64 :=
   finalizeNM state 1 3
 
 /--
@@ -250,10 +250,10 @@ a single call suitable for data that is all available at once. Returns a 64-bit
 hash value.
 -/
 def sipHash24 (seed : Vector UInt8 16) (bytes : Array UInt8) : UInt64 :=
-  finish24 (write24 (new seed) bytes)
+  finalize24 (append24 (init seed) bytes)
 
 /-- Like `sipHash24`, but the one-shot SipHash-1-3 of `bytes` under `seed`. -/
 def sipHash13 (seed : Vector UInt8 16) (bytes : Array UInt8) : UInt64 :=
-  finish13 (write13 (new seed) bytes)
+  finalize13 (append13 (init seed) bytes)
 
 end SipHash

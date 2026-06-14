@@ -16,7 +16,7 @@ limitations under the License.
 -/
 
 /-
-Checks that the streaming SipHash API (`new` → `write` → `finish`) produces the
+Checks that the streaming SipHash API (`init` → `append` → `finalize`) produces the
 same hash as the C reference, regardless of how the input is split into chunks.
 -/
 
@@ -66,15 +66,15 @@ structure SipHashVariant where
   name   : String
   stream : StreamingHash
 
-/-- Builds a streaming hash: write every chunk into a fresh hasher,
-    then finish. -/
-def streamWith (write : DefaultHasher → Array UInt8 → DefaultHasher)
-               (finish : DefaultHasher → UInt64) : StreamingHash :=
-  fun seed chunks => finish (chunks.foldl write (new seed))
+/-- Builds a streaming hash: append every chunk into a fresh hasher,
+    then finalize. -/
+def streamWith (append : LeanSipHash → Array UInt8 → LeanSipHash)
+               (finalize : LeanSipHash → UInt64) : StreamingHash :=
+  fun seed chunks => finalize (chunks.foldl append (init seed))
 
-/-- The two variants under test, each wrapping its `write`/`finish` pair. -/
-def sip13 : SipHashVariant := ⟨NAME_SIP13, streamWith write13 finish13⟩
-def sip24 : SipHashVariant := ⟨NAME_SIP24, streamWith write24 finish24⟩
+/-- The two variants under test, each wrapping its `append`/`finalize` pair. -/
+def sip13 : SipHashVariant := ⟨NAME_SIP13, streamWith append13 finalize13⟩
+def sip24 : SipHashVariant := ⟨NAME_SIP24, streamWith append24 finalize24⟩
 
 /-- The bytes `[0, 1, ..., length - 1]`, matching the C reference's input. -/
 def makeInput (length : Nat) : Array UInt8 :=

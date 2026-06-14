@@ -24,9 +24,9 @@ The following are under the `SipHash` namespace:
 
 ### Streaming
 
-- `new` `(seed : Vector UInt8 16) : DefaultHasher`
-- `write24, write13` `(state : DefaultHasher) (bytes : Array UInt8) : DefaultHasher`
-- `finish24, finish13` `(state : DefaultHasher) : UInt64`
+- `init` `(seed : Vector UInt8 16) : LeanSipHash`
+- `append24, append13` `(state : LeanSipHash) (bytes : Array UInt8) : LeanSipHash`
+- `finalize24, finalize13` `(state : LeanSipHash) : UInt64`
 
 ## Usage
 
@@ -40,12 +40,12 @@ def seed : Vector UInt8 16 :=
 #eval SipHash.sipHash24 seed #[1, 2, 3, 4, 5]
 #eval SipHash.sipHash13 seed #[1, 2, 3, 4, 5]
 
--- Streaming SipHash-2-4: feed bytes in any number of chunks, then finish.
--- For SipHash-1-3 instead, replace `write24` with `write13` and `finish24`
--- with `finish13`.
+-- Streaming SipHash-2-4: feed bytes in any number of chunks, then finalize.
+-- For SipHash-1-3 instead, replace `append24` with `append13` and `finalize24`
+-- with `finalize13`.
 #eval
-  let h := SipHash.new seed
-  let h := SipHash.write24 h #[1, 2, 3]
-  let h := SipHash.write24 h #[4, 5]
-  SipHash.finish24 h
+  let h := SipHash.init seed
+  let h := SipHash.append24 h #[1, 2, 3]
+  let h := SipHash.append24 h #[4, 5]
+  SipHash.finalize24 h
 ```
